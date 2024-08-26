@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.todotravel.domain.notification.dto.request.AlarmRequestDto;
 import org.example.todotravel.domain.notification.service.AlarmService;
 import org.example.todotravel.domain.plan.dto.request.CommentRequestDto;
+import org.example.todotravel.domain.plan.dto.response.CommentSummaryResponseDto;
 import org.example.todotravel.domain.plan.entity.Comment;
 import org.example.todotravel.domain.plan.entity.Plan;
 import org.example.todotravel.domain.plan.repository.CommentRepository;
@@ -66,5 +67,25 @@ public class CommentServiceImpl implements CommentService {
     @Transactional(readOnly = true)
     public List<Comment> getCommentsByPlan(Plan plan) {
         return commentRepository.findAllByPlan(plan);
+    }
+
+    // 특정 사용자가 댓글 단 플랜 조회
+    @Override
+    @Transactional(readOnly = true)
+    public List<CommentSummaryResponseDto> getAllCommentedPlansByUser(User user) {
+        return commentRepository.findDistinctPlansByUserIdOrderByLatestComment(user.getUserId());
+    }
+
+    // 특정 사용자가 최근 댓글 단 플랜 4개 조회
+    @Override
+    @Transactional(readOnly = true)
+    public List<CommentSummaryResponseDto> getRecentCommentedPlansByUser(User user) {
+        return commentRepository.findTop4DistinctPlansByUserIdOrderByLatestComment(user.getUserId());
+    }
+
+    //플랜 삭제 시 플랜에 달린 댓글 삭제
+    @Override
+    public void removeAllByPlan(Plan plan) {
+        commentRepository.deleteAllByPlan(plan);
     }
 }

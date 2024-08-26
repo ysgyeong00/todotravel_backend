@@ -55,6 +55,9 @@ public class User {
     @Column(name = "nickname", nullable = false, length = 50)
     private String nickname;
 
+    @Column(name = "profile_image_url")
+    private String profileImageUrl;
+
     // 성별
     @Column(name = "gender")
     @Enumerated(EnumType.STRING)
@@ -67,6 +70,9 @@ public class User {
     // 생년월일
     @Column(name = "birth_date")
     private LocalDate birthDate;
+
+    @Column(name = "info", length = 160)
+    private String info;
 
     // 권한설정
     @Column(name = "role", nullable = false)

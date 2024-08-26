@@ -7,6 +7,7 @@ import org.example.todotravel.domain.plan.entity.Plan;
 import org.example.todotravel.domain.user.entity.User;
 
 import java.util.List;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface PlanService {
     Plan createPlan(PlanRequestDto planRequestDto, User user);
@@ -16,7 +17,17 @@ public interface PlanService {
     List<PlanListResponseDto> getPublicPlans();
 
     PlanResponseDto getPlanDetails(Long planId);
-    Plan copyPlan(Long planId);
+    Plan copyPlan(Long planId, User user);
     List<PlanListResponseDto> getSpecificPlans(String keyword);
     PlanResponseDto getPlanForModify(Long planId);
+
+    List<PlanListResponseDto> getRecentBookmarkedPlans(User user);
+    List<PlanListResponseDto> getAllBookmarkedPlans(User user);
+    List<PlanListResponseDto> getRecentLikedPlans(User user);
+    List<PlanListResponseDto> getAllLikedPlans(User user);
+    PlanListResponseDto convertToPlanListResponseDto(Plan plan);
+
+    // 플랜 썸네일 이미지 등록
+    void updateThumbnailImage(Long planId, MultipartFile file);
+    Plan getThumbnailImageUrl(Long planId);
 }
