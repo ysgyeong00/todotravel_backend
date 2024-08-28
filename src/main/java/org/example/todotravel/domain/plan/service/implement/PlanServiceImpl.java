@@ -40,7 +40,19 @@ public class PlanServiceImpl implements PlanService {
 
     @Override
     @Transactional
-    public Plan createPlan(PlanRequestDto planRequestDto, User user) {
+    public Plan createPlan(PlanRequestDto planRequestDto, MultipartFile planThumbnail, User user) {
+
+
+        String thumbnailUrl = null;
+        if (planThumbnail != null && !planThumbnail.isEmpty()) {
+            try {
+                thumbnailUrl = s3Service.uploadFile(planThumbnail);
+                planRequestDto.setPlanThumbnailUrl(thumbnailUrl);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
         //플랜 생성 시 일정과 메모가 빈 플랜이 db에 생성
 
         Plan plan = planRequestDto.toEntity();
@@ -321,5 +333,10 @@ public class PlanServiceImpl implements PlanService {
     @Override
     public Plan getThumbnailImageUrl(Long planId) {
         return planRepository.findById(planId).orElseThrow(() -> new RuntimeException("플랜을 찾을 수 없습니다."));
+    }
+
+    @Override
+    public void savePlan(Plan plan) {
+        planRepository.save(plan);
     }
 }

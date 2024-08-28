@@ -10,7 +10,7 @@ import java.util.List;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface PlanService {
-    Plan createPlan(PlanRequestDto planRequestDto, User user);
+    Plan createPlan(PlanRequestDto planRequestDto, MultipartFile file, User user);
     void deletePlan(Plan plan);
     void removeAllPlanByUser(User user);
     void removeJustPlan(Plan plan);
@@ -22,6 +22,7 @@ public interface PlanService {
     Plan copyPlan(Long planId, User user);
     List<PlanListResponseDto> getSpecificPlans(String keyword);
     PlanResponseDto getPlanForModify(Long planId);
+    void savePlan(Plan plan);
 
     List<PlanListResponseDto> getRecentBookmarkedPlans(User user);
     List<PlanListResponseDto> getAllBookmarkedPlans(User user);
