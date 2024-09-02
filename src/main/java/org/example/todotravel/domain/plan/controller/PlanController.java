@@ -20,6 +20,7 @@ import org.example.todotravel.domain.user.entity.Follow;
 import org.example.todotravel.domain.user.entity.User;
 import org.example.todotravel.domain.user.service.UserService;
 import org.example.todotravel.global.controller.ApiResponse;
+import org.example.todotravel.global.dto.PagedResponseDto;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -27,7 +28,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
+
 import org.springframework.web.multipart.MultipartFile;
+
 import java.util.Set;
 
 @RestController
@@ -42,9 +45,10 @@ public class PlanController {
 
     //플랜 생성
     @PostMapping
-    public ApiResponse<Long> createPlan(@Valid @RequestPart("planRequestDto") PlanRequestDto planRequestDto, @RequestParam("planThumbnail") MultipartFile planThumbnail) {
+    public ApiResponse<Long> createPlan(@Valid @RequestPart("planRequestDto") PlanRequestDto planRequestDto,
+                                        @RequestParam(value = "planThumbnail", required = false) MultipartFile planThumbnail) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserDetails userDetails = (UserDetails)authentication.getPrincipal();
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         User user = userService.getUserByUsername(userDetails.getUsername());
         Plan plan = planService.createPlan(planRequestDto, planThumbnail, user);
 
@@ -59,15 +63,18 @@ public class PlanController {
     public ApiResponse<PlanResponseDto> getPlan(@PathVariable("plan_id") Long planId) {
         PlanResponseDto planDetails = planService.getPlanDetails(planId);
         planDetails = planDetails.toBuilder()
-                .scheduleList(scheduleService.getSchedulesByPlan(planId))
-                .build();
+            .scheduleList(scheduleService.getSchedulesByPlan(planId))
+            .build();
         return new ApiResponse<>(true, "플랜 조회 성공", planDetails);
     }
 
-    //플랜 수정
+    // 플랜 수정
     @PutMapping("/{plan_id}")
-    public ApiResponse<Long> updatePlan(@PathVariable("plan_id") Long planId, @Valid @RequestBody PlanRequestDto dto) {
-        Plan plan = planService.updatePlan(planId, dto);
+    public ApiResponse<Long> updatePlan(@PathVariable("plan_id") Long planId,
+                                        @RequestPart("planRequestDto") PlanRequestDto dto,
+                                        @RequestPart(value = "planThumbnail", required = false) MultipartFile planThumbnail) {
+        // @RequestPart - Multipart/form-data가 포함되어 있는 경우에 사용, 없다면 @RequestBody와 동일
+        Plan plan = planService.updatePlan(planId, dto, planThumbnail);
         return new ApiResponse<>(true, "플랜 수정 성공", planId);
     }
 
@@ -89,12 +96,12 @@ public class PlanController {
     @GetMapping("/{plan_id}/invite")
     public ApiResponse<List<UserListResponseDto>> invite(@PathVariable("plan_id") Long planId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserDetails userDetails = (UserDetails)authentication.getPrincipal();
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         User user = userService.getUserByUsername(userDetails.getUsername());
 
         Set<Follow> followers = user.getFollowers();
         List<User> users = new ArrayList<>();
-        for (Follow follow : followers){
+        for (Follow follow : followers) {
             users.add(follow.getFollowingUser());
         }
         //해당 플랜에 참여하고 있지 않은 사용자만
@@ -125,10 +132,64 @@ public class PlanController {
         return new ApiResponse<>(true, "플랜 목록 조회 성공", planList);
     }
 
+    // 플랜 기본 인기순으로 가져오기 (Public, No Recruitment)
+    @GetMapping("/popular")
+    public ApiResponse<?> getPopularPlans(@RequestParam(name = "page", defaultValue = "0") int page,
+                                          @RequestParam(name = "size", defaultValue = "12") int size) {
+        PagedResponseDto<PlanListResponseDto> planList = planService.getPopularPlansNotInRecruitment(page, size);
+        return new ApiResponse<>(true, "다음 인기순 플랜 조회에 성공했습니다.", planList);
+    }
+
+    // 행정구역별 인기순 플랜 가져오기
+    @GetMapping("/popular/frontLocation")
+    public ApiResponse<?> getPopularPlansByFrontLocation(@RequestParam(defaultValue = "0") int page,
+                                                         @RequestParam(defaultValue = "12") int size,
+                                                         @RequestParam String frontLocation) {
+        PagedResponseDto<PlanListResponseDto> planList = planService.getPopularPlansWithFrontLocation(page, size, frontLocation);
+        return new ApiResponse<>(true, "행정구역별 인기순 플랜 조회에 성공했습니다.", planList);
+    }
+
+    // 행정구역+도시별 인기순 플랜 가져오기
+    @GetMapping("/popular/location")
+    public ApiResponse<?> getPopularPlansByLocation(@RequestParam(defaultValue = "0") int page,
+                                                    @RequestParam(defaultValue = "12") int size,
+                                                    @RequestParam String frontLocation,
+                                                    @RequestParam String location) {
+        PagedResponseDto<PlanListResponseDto> planList = planService.getPopularPlansWithAllLocation(page, size, frontLocation, location);
+        return new ApiResponse<>(true, "행정구역+도시별 인기순 플랜 조회에 성공했습니다.", planList);
+    }
+
+    // 플랜 기본 최신순으로 가져오기 (Public, No Recruitment)
+    @GetMapping("/recent")
+    public ApiResponse<?> getRecentPlans(@RequestParam(name = "page", defaultValue = "0") int page,
+                                         @RequestParam(name = "size", defaultValue = "12") int size) {
+        PagedResponseDto<PlanListResponseDto> planList = planService.getRecentPlansByRecruitment(page, size, false);
+        return new ApiResponse<>(true, "최신순 플랜 조회에 성공했습니다.", planList);
+    }
+
+    // 행정구역별 최신순 플랜 가져오기
+    @GetMapping("/recent/frontLocation")
+    public ApiResponse<?> getRecentPlansByFrontLocation(@RequestParam(defaultValue = "0") int page,
+                                                        @RequestParam(defaultValue = "12") int size,
+                                                        @RequestParam String frontLocation) {
+        PagedResponseDto<PlanListResponseDto> planList = planService.getRecentPlansWithFrontLocation(page, size, frontLocation, false);
+        return new ApiResponse<>(true, "행정구역별 최신순 플랜 조회에 성공했습니다.", planList);
+    }
+
+    // 행정구역+도시별 최신순 플랜 가져오기
+    @GetMapping("/recent/location")
+    public ApiResponse<?> getRecentPlansByLocation(@RequestParam(defaultValue = "0") int page,
+                                                   @RequestParam(defaultValue = "12") int size,
+                                                   @RequestParam String frontLocation,
+                                                   @RequestParam String location) {
+        PagedResponseDto<PlanListResponseDto> planList = planService.getRecentPlansWithAllLocation(page, size, frontLocation, location, false);
+        return new ApiResponse<>(true, "행정구역+도시별 최신순 플랜 조회에 성공했습니다.", planList);
+    }
+
     //플랜 가져오기(댓글x, 일정x)   (플랜 정보, 북마크, 좋아요)
     //상단의 getPlan이 플랜의 모든 관련 정보들을 return
     @GetMapping("/public/{plan_id}")
-    public ApiResponse<PlanResponseDto> getPublicPlan(@PathVariable("plan_id") Long planId){
+    public ApiResponse<PlanResponseDto> getPublicPlan(@PathVariable("plan_id") Long planId) {
         PlanResponseDto plan = planService.getPlanForModify(planId);
         return new ApiResponse<>(true, "수정할 플랜 조회 성공", plan);
     }
@@ -137,9 +198,13 @@ public class PlanController {
     @PostMapping("/{plan_id}/load")
     public ApiResponse<Long> getLoadPlan(@PathVariable("plan_id") Long planId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserDetails userDetails = (UserDetails)authentication.getPrincipal();
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         User user = userService.getUserByUsername(userDetails.getUsername());
         Plan plan = planService.copyPlan(planId, user);
+
+        // 채팅방 자동 생성
+        chatRoomService.createChatRoom(plan);
+
         return new ApiResponse<>(true, "플랜 불러오기 성공", plan.getPlanId());
     }
 
@@ -153,7 +218,7 @@ public class PlanController {
     // 플랜 썸네일 이미지 등록
     @PostMapping("/thumbnail/{plan_id}")
     public ApiResponse<PlanThumbnailRequestDto> uploadThumbnailImage(@PathVariable("plan_id") Long planId, @RequestParam("file")
-                                                                     MultipartFile file) {
+    MultipartFile file) {
         try {
             planService.updateThumbnailImage(planId, file);
 

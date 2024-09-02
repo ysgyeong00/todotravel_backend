@@ -1,24 +1,23 @@
 package org.example.todotravel.domain.plan.dto.request;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.example.todotravel.domain.plan.entity.Vote;
 
-import java.time.LocalTime;
+import java.time.LocalDateTime;
 
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
 @Builder
-public class ScheduleCreateRequestDto {
+public class VoteRequestDto {
     @NotNull
     private Long locationId;
     @NotNull
-    private Integer travelDayCount;
-    //null 허용
-    private String description;
-    private LocalTime travelTime;
+    private LocalDateTime endDate;
+    @NotNull
+    private Vote.Category category;
 }

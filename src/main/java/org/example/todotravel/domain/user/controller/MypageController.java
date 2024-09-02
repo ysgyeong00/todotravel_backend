@@ -51,11 +51,12 @@ public class MypageController {
         // 본인인 경우
         if (authenticationUtil.isAuthenticatedUser(authentication, user)) {
             UserProfileResponseDto baseProfile = planUserService.getUserProfile("my", user, false);
+            List<PlanListResponseDto> recruitingPlans = planUserService.getOwnRecruitmentPlansLimit4(user);
             List<PlanListResponseDto> recentBookmarks = planService.getRecentBookmarkedPlans(user);
             List<PlanListResponseDto> recentLikes = planService.getRecentLikedPlans(user);
             List<CommentSummaryResponseDto> recentComments = commentService.getRecentCommentedPlansByUser(user);
 
-            MyProfileResponseDto myProfileResponseDto = MyProfileResponseDto.from(baseProfile, recentBookmarks, recentLikes, recentComments);
+            MyProfileResponseDto myProfileResponseDto = MyProfileResponseDto.from(baseProfile, recruitingPlans, recentBookmarks, recentLikes, recentComments);
             return new ApiResponse<>(true, "본인 마이페이지 조회에 성공했습니다.", myProfileResponseDto);
         } else { // 타인인 경우
             boolean isFollowing = followService.checkFollowing(authentication, user); // 팔로우 중인지 확인
@@ -96,7 +97,7 @@ public class MypageController {
 
     // 닉네임 변경
     @PutMapping("/nickname")
-    public ApiResponse<?> changeNickname(@RequestBody NicknameRequestDto dto, Authentication authentication) {
+    public ApiResponse<?> changeNickname(@Valid @RequestBody NicknameRequestDto dto, Authentication authentication) {
         // 해당 사용자 찾기
         User user = userService.getUserById(dto.getUserId());
 
@@ -111,7 +112,7 @@ public class MypageController {
 
     // 비밀번호 변경 - UserController 에도 있지만, 마이페이지에서 기존 비밀번호를 알아야 가능한 변경
     @PutMapping("/password")
-    public ApiResponse<?> changePassword(@RequestBody PasswordUpdateRequestDto dto, Authentication authentication) {
+    public ApiResponse<?> changePassword(@Valid @RequestBody PasswordUpdateRequestDto dto, Authentication authentication) {
         // 해당 사용자 찾기
         User user = userService.getUserById(dto.getUserId());
 
@@ -183,6 +184,13 @@ public class MypageController {
     @GetMapping("/{user_id}/my-trip")
     public ApiResponse<?> getAllPlans(@PathVariable("user_id") Long userId) {
         List<PlanListResponseDto> planList = planUserService.getAllPlansByUserAndStatus(userId);
+        return new ApiResponse<>(true, "전체 여행 조회에 성공했습니다.", planList);
+    }
+
+    // 사용자가 모집 중인 플랜 전체 조회
+    @GetMapping("/{user_id}/my-recruitment")
+    public ApiResponse<?> getAllRecruitmentPlans(@PathVariable("user_id") Long userId) {
+        List<PlanListResponseDto> planList = planUserService.getAllRecruitmentPlans(userId);
         return new ApiResponse<>(true, "전체 여행 조회에 성공했습니다.", planList);
     }
 

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.example.todotravel.domain.user.entity.User;
+import org.hibernate.annotations.ColumnDefault;
 
 @Entity
 @Table(name = "plans")
@@ -26,6 +27,9 @@ public class Plan {
 
     @Column(name = "title", nullable = false, length = 100)
     private String title;
+
+    @Column(name = "front_location", nullable = false)
+    private String frontLocation;
 
     @Column(name = "location", nullable = false, length = 50)
     private String location;
@@ -50,8 +54,15 @@ public class Plan {
     @Column(name = "participants_count")
     private Integer participantsCount;
 
+    @Column(name = "recruitment")
+    @ColumnDefault("false")
+    private Boolean recruitment;
+
     @Column(name = "total_budget")
     private Long totalBudget;
+
+    @Column(name = "view_count")
+    private Long viewCount;
 
     //생성자
     @ManyToOne

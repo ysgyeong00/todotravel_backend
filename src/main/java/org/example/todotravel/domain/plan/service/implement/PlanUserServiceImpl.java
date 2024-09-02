@@ -3,6 +3,7 @@ package org.example.todotravel.domain.plan.service.implement;
 import lombok.RequiredArgsConstructor;
 import org.example.todotravel.domain.notification.dto.request.AlarmRequestDto;
 import org.example.todotravel.domain.notification.service.AlarmService;
+import org.example.todotravel.domain.plan.dto.response.PendingPlanUserDto;
 import org.example.todotravel.domain.plan.dto.response.PlanListResponseDto;
 import org.example.todotravel.domain.plan.entity.Plan;
 import org.example.todotravel.domain.plan.entity.PlanUser;
@@ -13,6 +14,7 @@ import org.example.todotravel.domain.user.dto.response.UserProfileResponseDto;
 import org.example.todotravel.domain.user.entity.User;
 import org.example.todotravel.domain.user.service.UserService;
 import org.example.todotravel.global.security.CustomUserDetails;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.Period;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -32,7 +35,7 @@ public class PlanUserServiceImpl implements PlanUserService {
     private final UserService userService;
     private final AlarmService alarmService; //알림 자동 생성
 
-    //플랜 초대
+    //플랜 초대, 플랜 모집 참가
     @Override
     @Transactional
     public PlanUser addPlanUser(Long planId, Long userId) {
@@ -46,10 +49,15 @@ public class PlanUserServiceImpl implements PlanUserService {
 
         PlanUser newPlanUser = planUserRepository.save(planUser);
 
-
-        AlarmRequestDto requestDto = new AlarmRequestDto(plan.getPlanUser().getUserId(),
-            "[" + plan.getTitle() + "] 플랜에 " + user.getNickname() + "님이 초대 되었습니다.");
-        alarmService.createAlarm(requestDto);
+        if (!plan.getRecruitment()) {
+            AlarmRequestDto requestDto = new AlarmRequestDto(plan.getPlanUser().getUserId(),
+                    "[" + plan.getTitle() + "] 플랜에 " + user.getNickname() + "님이 초대 되었습니다.");
+            alarmService.createAlarm(requestDto);
+        }else {
+            AlarmRequestDto requestDto = new AlarmRequestDto(plan.getPlanUser().getUserId(),
+                    "[" + plan.getTitle() + "] 플랜에 " + user.getNickname() + "님이 참가하기를 요청했습니다.");
+            alarmService.createAlarm(requestDto);
+        }
 
         return newPlanUser;
     }
@@ -107,12 +115,14 @@ public class PlanUserServiceImpl implements PlanUserService {
     @Transactional(readOnly = true)
     public UserProfileResponseDto getUserProfile(String subject, User user, boolean isFollowing) {
         Long userId = user.getUserId();
-        List<PlanListResponseDto> planList = getAllPlansByUserAndStatus(userId);
-        int planCount = planList.size();
+        List<PlanListResponseDto> planList;
 
         if (subject.equals("my")) {
-            planList = planCount > 4 ? planList.subList(0, 4) : planList;
+            planList = getAllPlansByUserAndStatusTop4(userId);
+        } else {
+            planList = getAllPlansByUserAndStatus(userId);
         }
+        int planCount = planList.size();
 
         return UserProfileResponseDto.builder()
             .userId(userId)
@@ -141,26 +151,48 @@ public class PlanUserServiceImpl implements PlanUserService {
     @Transactional(readOnly = true)
     public List<PlanListResponseDto> getAllPlansByUserAndStatus(Long userId) {
         List<Plan> plans = planUserRepository.findAllPlansByUserId(userId, PlanUser.StatusType.ACCEPTED);
-        return plans.stream()
-            .map(planService::convertToPlanListResponseDto)
-            .collect(Collectors.toList());
+        return planService.convertToPlanListResponseDto(plans);
     }
 
-    // 특정 사용자가 참여한 최근 플랜 3개 조회
+    // 특정 사용자가 참여한 플랜 4개 DTO로 조회
     @Override
     @Transactional(readOnly = true)
-    public List<PlanListResponseDto> getRecentPlansByUser(Long userId) {
-        List<Plan> plans = planUserRepository.findAllPlansByUserId(userId, PlanUser.StatusType.ACCEPTED);
-        plans = plans.size() > 3 ? plans.subList(0, 3) : plans;
+    public List<PlanListResponseDto> getAllPlansByUserAndStatusTop4(Long userId) {
+        List<Plan> plans = planUserRepository.findAllPlansByUserIdTop4(userId, PlanUser.StatusType.ACCEPTED, PageRequest.of(0, 4));
+        return planService.convertToPlanListResponseDto(plans);
+    }
 
-        return plans.stream()
-            .map(planService::convertToPlanListResponseDto)
-            .collect(Collectors.toList());
+    // 특정 사용자가 관여한 플랜 중 모집 중인 플랜 4개 DTO로 조회
+    @Override
+    @Transactional(readOnly = true)
+    public List<PlanListResponseDto> getOwnRecruitmentPlansLimit4(User user) {
+        List<Plan> plans = planUserRepository.findRecruitingPlansByUserIdLimit4(user.getUserId(), PlanUser.StatusType.ACCEPTED);
+        return planService.convertToPlanListResponseDto(plans);
+    }
+
+    // 특정 사용자가 관여한 플랜 중 모집 중인 모든 플랜 DTO로 조회
+    @Override
+    @Transactional(readOnly = true)
+    public List<PlanListResponseDto> getAllRecruitmentPlans(Long userId) {
+        List<Plan> plans = planUserRepository.findAllRecruitingPlansByUserId(userId, PlanUser.StatusType.ACCEPTED);
+        return planService.convertToPlanListResponseDto(plans);
     }
 
     @Override
     public Boolean existsPlanUser(Plan plan, Long userId) {
         User user = userService.getUserById(userId);
-        return planUserRepository.existsPlanUserByPlanAndUser(plan, user);
+        return planUserRepository.existsPlanUserByPlanAndUserAndStatus(plan, user, PlanUser.StatusType.ACCEPTED);
+    }
+
+    @Override
+    public List<PendingPlanUserDto> getAllParticipantsByUserId(Long userId) {
+        List<PendingPlanUserDto> pendingPlanUserList = new ArrayList<>();
+        for (PlanUser planUser : planUserRepository.findAllInvitePlanUserByUserId(userId, PlanUser.StatusType.PENDING)){
+            pendingPlanUserList.add(PendingPlanUserDto.fromEntity(planUser));
+        }
+        for (PlanUser planUser : planUserRepository.findAllRecruitPlanUserByUserId(userId, PlanUser.StatusType.PENDING)){
+            pendingPlanUserList.add(PendingPlanUserDto.fromEntity(planUser));
+        }
+        return pendingPlanUserList;
     }
 }
