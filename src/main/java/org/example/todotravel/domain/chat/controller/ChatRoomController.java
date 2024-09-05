@@ -28,12 +28,12 @@ import reactor.core.publisher.Mono;
 @RequestMapping("/api/chat/rooms")
 @RequiredArgsConstructor
 public class ChatRoomController {
+
     private final ChatRoomService chatRoomService;
     private final ChatRoomUserService chatRoomUserService;
     private final ChatMessageService chatMessageService;
     private final PlanUserService planUserService;
     private final PlanService planService;
-
 
     // 1:1 채팅방 생성
     @PostMapping("/one-to-one")
@@ -92,18 +92,19 @@ public class ChatRoomController {
         // 채팅방 삭제 시 플랜도 삭제 - 1:1인 경우는 플랜이 없음
         Plan plan = chatRoomService.getPlanByRoomId(roomId);
         //외래키 제약조건으로 인해 채팅방 먼저 삭제
-        chatRoomService.deleteChatRoomAndMessage(roomId);
+        chatRoomService.removeChatRoomAndMessage(roomId);
         if (plan != null) {
             planUserService.removePlanUserFromOwnPlan(plan);
-            planService.deletePlan(plan);
+            planService.removePlan(plan);
         }
         return new ApiResponse<>(true, "채팅방 삭제 성공");
     }
 
     // 이전 채팅 내용 조회
     @GetMapping("/find/comment-list/{roomId}")
-    public Mono<ResponseEntity<List<ChatMessageResponseDto>>> find(@PathVariable("roomId") Long messageId) {
-        Flux<ChatMessageResponseDto> response = chatMessageService.findChatMessages(messageId);
-        return response.collectList().map(ResponseEntity::ok);
+    public Mono<ApiResponse<List<ChatMessageResponseDto>>> find(@PathVariable("roomId") Long roomId) {
+        Flux<ChatMessageResponseDto> response = chatMessageService.getChatMessages(roomId);
+        return response.collectList()
+            .map(messages -> new ApiResponse<>(true, "이전 채팅 내역 조회 성공", messages));
     }
 }

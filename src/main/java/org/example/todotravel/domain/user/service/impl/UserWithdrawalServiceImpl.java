@@ -14,12 +14,10 @@ import org.example.todotravel.domain.user.service.FollowService;
 import org.example.todotravel.domain.user.service.RefreshTokenService;
 import org.example.todotravel.domain.user.service.UserService;
 import org.example.todotravel.domain.user.service.UserWithdrawalService;
-import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.TransactionSystemException;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -88,17 +86,17 @@ public class UserWithdrawalServiceImpl implements UserWithdrawalService {
             List<Plan> userPlans = planService.getAllPlanByPlanUser(user);
 
             CompletableFuture<Void> chatMessageDeletionFuture = CompletableFuture.runAsync(() ->
-                deleteChatMessages(userPlans).block()
+                removeChatMessages(userPlans).block()
             );
 
-            deleteUserData(user, userPlans);
+            removeUserData(user, userPlans);
             handleNonCreatedPlans(user);
 
             chatMessageDeletionFuture.join();
 
             chatRoomUserService.removeUserFromAllChatRoom(user);
-            alarmService.deleteAllAlarm(user.getUserId());
-            refreshTokenService.deleteRefreshToken(user.getUserId());
+            alarmService.removeAllAlarm(user.getUserId());
+            refreshTokenService.removeRefreshToken(user.getUserId());
             followService.removeAllFollowRelationships(user);
 
             userService.removeUser(user);
@@ -126,29 +124,29 @@ public class UserWithdrawalServiceImpl implements UserWithdrawalService {
     }
 
     // 생성한 플랜의 채팅방에 존재하는 메시지 모두 삭제
-    private Mono<Void> deleteChatMessages(List<Plan> userPlans) {
+    private Mono<Void> removeChatMessages(List<Plan> userPlans) {
         return Mono.fromCallable(() -> chatRoomService.getAllChatRoomByPlan(userPlans))
             .flatMapIterable(rooms -> rooms)
             .flatMap(chatRoom -> {
                 deletedChatRoomIds.add(chatRoom.getRoomId()); // 삭제되는 채팅방 추적
-                return chatMessageService.deleteAllMessageForChatRoom(chatRoom.getRoomId());
+                return chatMessageService.removeAllMessageForChatRoom(chatRoom.getRoomId());
             })
             .then();
     }
 
     // 사용자 관련 데이터 삭제 수행
-    private void deleteUserData(User user, List<Plan> userPlans) {
+    private void removeUserData(User user, List<Plan> userPlans) {
 
         // 사용자가 생성한 플랜의 채팅방 삭제
         List<ChatRoom> chatRooms = chatRoomService.getAllChatRoomByPlan(userPlans);
         for (ChatRoom chatRoom : chatRooms) {
             chatRoomUserService.removeAllUserFromChatRoom(chatRoom);
-            chatRoomService.deleteChatRoom(chatRoom.getRoomId());
+            chatRoomService.removeChatRoom(chatRoom.getRoomId());
         }
 
         // 사용자가 생성한 플랜에 대해 모두 삭제
         for (Plan plan : userPlans) {
-            deleteEntirePlan(plan);
+            removeEntirePlan(plan);
         }
     }
 
@@ -168,15 +166,15 @@ public class UserWithdrawalServiceImpl implements UserWithdrawalService {
     private void handleParticipatingPlan(User user, Plan plan) {
         ChatRoom chatRoom = chatRoomService.getChatRoomByPlanId(plan.getPlanId());
         if (chatRoom.getChatRoomUsers().size() == 1 || plan.getPlanUsers().size() == 1) {
-            deleteEntirePlan(plan);
+            removeEntirePlan(plan);
 
             // 메시지 삭제를 비동기로 처리
             CompletableFuture.runAsync(() ->
-                chatMessageService.deleteAllMessageForChatRoom(chatRoom.getRoomId()).block()
+                chatMessageService.removeAllMessageForChatRoom(chatRoom.getRoomId()).block()
             );
 
             chatRoomUserService.removeAllUserFromChatRoom(chatRoom);
-            chatRoomService.deleteChatRoom(chatRoom.getRoomId());
+            chatRoomService.removeChatRoom(chatRoom.getRoomId());
             deletedChatRoomIds.add(chatRoom.getRoomId()); // 삭제되는 채팅방 추적
         } else {
             updateUserInPlan(user, plan, chatRoom);
@@ -202,12 +200,12 @@ public class UserWithdrawalServiceImpl implements UserWithdrawalService {
     }
 
     // 사용자가 생성한 플랜의 댓글, 좋아요, 북마크, 참여자, 일정, 해당 플랜 순서대로 삭제
-    protected void deleteEntirePlan(Plan plan) {
+    protected void removeEntirePlan(Plan plan) {
         commentService.removeAllCommentByPlan(plan);
         likeService.removeAllLikeByPlan(plan);
         bookmarkService.removeAllBookmarksByPlan(plan);
         planUserService.removePlanUserFromOwnPlan(plan);
-        scheduleService.deleteAllSchedulesByPlan(plan);
+        scheduleService.removeAllSchedulesByPlan(plan);
         planService.removeJustPlan(plan);
     }
 

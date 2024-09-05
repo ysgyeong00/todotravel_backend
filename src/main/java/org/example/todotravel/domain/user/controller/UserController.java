@@ -17,7 +17,6 @@ import org.example.todotravel.global.controller.ApiResponse;
 import org.example.todotravel.global.jwt.util.JwtTokenizer;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @RestController
@@ -46,7 +45,7 @@ public class UserController {
             // accessToken, refreshToken 생성
             String accessToken = jwtTokenizer.issueTokenAndSetCookies(response, updatedUser);
 
-            LoginResponseDto loginResponseDto = LoginResponseDto.of(updatedUser, accessToken);
+            LoginResponseDto loginResponseDto = LoginResponseDto.from(updatedUser, accessToken);
             return new ApiResponse<>(true, "추가 정보 업데이트에 성공했습니다.", loginResponseDto);
         } catch (Exception e) {
             return new ApiResponse<>(false, "추가 정보 업데이트에 실패했습니다.");
@@ -64,7 +63,7 @@ public class UserController {
             // accessToken, refreshToken 생성
             String accessToken = jwtTokenizer.issueTokenAndSetCookies(response, user);
 
-            LoginResponseDto loginResponseDto = LoginResponseDto.of(user, accessToken);
+            LoginResponseDto loginResponseDto = LoginResponseDto.from(user, accessToken);
             return new ApiResponse<>(true, "OAuth2 로그인을 성공했습니다.", loginResponseDto);
         } catch (Exception e) {
             return new ApiResponse<>(false, "OAuth2 로그인을 실패했습니다. : " + e.getMessage(), null);
@@ -100,13 +99,13 @@ public class UserController {
         // accessToken, refreshToken 생성
         String accessToken = jwtTokenizer.issueTokenAndSetCookies(response, loginUser);
 
-        LoginResponseDto loginResponseDto = LoginResponseDto.of(loginUser, accessToken);
+        LoginResponseDto loginResponseDto = LoginResponseDto.from(loginUser, accessToken);
         return new ApiResponse<>(true, "로그인을 성공했습니다.", loginResponseDto);
     }
 
     // 아이디 찾기 인증확인
     @PostMapping("/find-username")
-    public ApiResponse<?> findUsername(@Valid @RequestBody UsernameRequestDto dto) {
+    public ApiResponse<?> getUsername(@Valid @RequestBody UsernameRequestDto dto) {
         Object response = userService.getUsernameOrEmail(dto);
 
         if (response instanceof UsernameResponseDto) {
@@ -132,8 +131,8 @@ public class UserController {
     // 로그아웃
     @PostMapping("/logout")
     public ApiResponse<?> logout(HttpServletRequest request, HttpServletResponse response) {
-        jwtTokenizer.deleteRefreshTokenCookie(request, response);
-        jwtTokenizer.deleteRefreshTokenFromDB(request);
+        jwtTokenizer.removeRefreshTokenCookie(request, response);
+        jwtTokenizer.removeRefreshTokenFromDB(request);
 
         // 클라이언트에게 AccessToken 삭제 지시 (프론트엔드에서 처리)
         return new ApiResponse<>(true, "로그아웃을 성공했습니다.");

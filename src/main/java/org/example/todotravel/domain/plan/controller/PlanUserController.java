@@ -9,11 +9,7 @@ import org.example.todotravel.domain.plan.entity.Plan;
 import org.example.todotravel.domain.plan.entity.PlanUser;
 import org.example.todotravel.domain.plan.service.PlanService;
 import org.example.todotravel.domain.plan.service.PlanUserService;
-import org.example.todotravel.domain.user.entity.User;
 import org.example.todotravel.global.controller.ApiResponse;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -60,7 +56,7 @@ public class PlanUserController {
 
     // 플랜 나가기, 초대 취소
     @DeleteMapping("/plan/{plan_id}/participant/{user_id}")
-    public ApiResponse<PlanUser> deletePlanUser(@PathVariable("plan_id") Long planId, @PathVariable("user_id") Long userId) {
+    public ApiResponse<PlanUser> removePlanUser(@PathVariable("plan_id") Long planId, @PathVariable("user_id") Long userId) {
         // PlanUser에서 해당 사용자 제거
         planUserService.removePlanUser(planId, userId);
 
@@ -72,14 +68,14 @@ public class PlanUserController {
 
         //플랜에 참여자가 없으면 플랜 삭제
         if(planUserService.getAllPlanUser(planId).stream().noneMatch(planUser -> planUser.getStatus() == PlanUser.StatusType.ACCEPTED)){
-            chatRoomService.deleteChatRoom(chatRoom.getRoomId());
+            chatRoomService.removeChatRoom(chatRoom.getRoomId());
             planUserService.removePlanUserFromOwnPlan(plan);
-            planService.deletePlan(plan);
+            planService.removePlan(plan);
         }
         else if (plan.getPlanUser().getUserId().equals(userId)){
-            User user = planUserService.getAllPlanUser(planId).getFirst().getUser();
+            List<PlanUser> planUsers = planUserService.getAllPlanUser(planId);
             plan = plan.toBuilder()
-                    .planUser(user)
+                    .planUser(planUsers.getFirst().getUser())
                     .build();
             planService.savePlan(plan);
         }//플랜에 참여자가 있고 나간 사용자가 플랜 생성자면 플랜 생성자 변경
@@ -87,12 +83,30 @@ public class PlanUserController {
         return new ApiResponse<>(true, "플랜 참여자 삭제 성공");
     }
 
-    //플랜에 참여 중인 사용자인지 확인
+    //플랜에 참여 중(accepted)인 사용자인지 확인(수락 상태)
+    @GetMapping("/plan/{plan_id}/exist/{user_id}/accepted")
+    public ApiResponse<Boolean> isUserInPlanAccepted(@PathVariable("plan_id") Long planId, @PathVariable("user_id") Long userId){
+        Plan plan = planService.getPlan(planId);
+        Boolean existsPlanUser = planUserService.existsPlanUser(plan, userId, PlanUser.StatusType.ACCEPTED);
+        return new ApiResponse<>(true, "플랜 참여 여부 조회 성공", existsPlanUser);
+    }
+
+    //플랜에 참여 중인 사용자인지 확인(모든(대기,거절,수락) 상태)
     @GetMapping("/plan/{plan_id}/exist/{user_id}")
     public ApiResponse<Boolean> isUserInPlan(@PathVariable("plan_id") Long planId, @PathVariable("user_id") Long userId){
         Plan plan = planService.getPlan(planId);
-        Boolean existsPlanUser = planUserService.existsPlanUser(plan, userId);
-        return new ApiResponse<>(true, "플랜 참여 여부 조회 성공", existsPlanUser);
+        Boolean existsPlanUser = planUserService.existsPlanUser(plan, userId, null);
+        return new ApiResponse<>(true, "플랜에 사용자 존재 여부 조회 성공", existsPlanUser);
+    }
+
+    //플랜이 초대 가능한 상태인지 확인
+    @GetMapping("/plan/{plan_id}/invitable/{user_id}")
+    public ApiResponse<Boolean> isInvitablePlanByUser(@PathVariable("plan_id") Long planId, @PathVariable("user_id") Long userId){
+        Plan plan = planService.getPlan(planId);
+        if (!plan.getRecruitment() && plan.getPlanUser().getUserId().equals(userId)){
+            return new ApiResponse<>(true, "플랜에 사용자 존재 여부 조회 성공", true);
+        }
+        return new ApiResponse<>(true, "플랜에 사용자 존재 여부 조회 성공", false);
     }
 
     //수락,거절을 위한 사용자의 플랜 참가, 초대 목록 가져오기

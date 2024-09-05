@@ -16,6 +16,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * 이메일 인증 요청을 다루는 컨트롤러
+ */
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/send-mail")
@@ -54,7 +57,7 @@ public class EmailController {
     // 이메일 인증 - 이름, 생년월일, 이메일에 해당하는 유저 찾은 후 이메일 전송
     @PostMapping("/find-password")
     public ApiResponse<?> sendMailToFindPassword(@RequestBody PasswordSearchRequestDto dto) {
-        PasswordSearchResponseDto passwordSearchResponseDto = userService.findUserByNameAndBirthAndEmail(dto);
+        PasswordSearchResponseDto passwordSearchResponseDto = userService.getUserByNameAndBirthAndEmail(dto);
 
         EmailMessage emailMessage = setEmailMessage(dto.getEmail());
         String code = emailService.sendMail(emailMessage, "email", passwordEncoder);

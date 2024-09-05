@@ -17,8 +17,8 @@ public class ScheduleController {
 
     //여행 일정 생성
     @PostMapping("/{plan_id}/course")
-    public ApiResponse<ScheduleResponseDto> inputSchedule(@PathVariable("plan_id") Long planId,
-                                                @Valid @RequestBody ScheduleCreateRequestDto dto) {
+    public ApiResponse<ScheduleResponseDto> createSchedule(@PathVariable("plan_id") Long planId,
+                                                           @Valid @RequestBody ScheduleCreateRequestDto dto) {
         Schedule schedule = scheduleService.createSchedule(planId, dto);
         ScheduleResponseDto responseDto = ScheduleResponseDto.fromEntity(schedule);
         return new ApiResponse<>(true, "일정 저장 성공", responseDto);
@@ -26,18 +26,27 @@ public class ScheduleController {
 
     //여행 일정 삭제
     @DeleteMapping("/{plan_id}/course/{schedule_id}")
-    public ApiResponse<Void> deleteSchedule(@PathVariable("plan_id") Long planId,
-                                      @PathVariable("schedule_id") Long scheduleId) {
-        scheduleService.destroySchedule(scheduleId);
+    public ApiResponse<Void> removeSchedule(@PathVariable("plan_id") Long planId,
+                                            @PathVariable("schedule_id") Long scheduleId) {
+        scheduleService.removeSchedule(scheduleId);
         return new ApiResponse<>(true, "일정이 삭제되었습니다.");
     }
 
     //여행 일정 불러오기
     @GetMapping("/{plan_id}/course/{schedule_id}")
-    public ApiResponse<ScheduleResponseDto> showSchedule(@PathVariable("plan_id") Long planId,
-                                      @PathVariable("schedule_id") Long scheduleId) {
+    public ApiResponse<ScheduleResponseDto> getSchedule(@PathVariable("plan_id") Long planId,
+                                                        @PathVariable("schedule_id") Long scheduleId) {
         ScheduleResponseDto responseDto = scheduleService.getSchedule(scheduleId);
         return new ApiResponse<>(true, "일정 불러오기", responseDto);
+    }
+
+    //여행 일정 description 관리 - 수정
+    @PutMapping("/{schedule_id}/description")
+    public ApiResponse<String> updateScheduleDescription(
+            @PathVariable("schedule_id") Long scheduleId,
+            @RequestBody String description) {
+        scheduleService.updateDescription(scheduleId, description);
+        return new ApiResponse<>(true, "메모가 수정되었습니다..", description);
     }
 
     //여행 일정 status 관리
@@ -56,26 +65,13 @@ public class ScheduleController {
         return new ApiResponse<>(true, "이동수단이 추가되었습니다.", vehicle);
     }
 
-    //여행 일정 vehicle 관리 - 삭제
-    @DeleteMapping("/{schedule_id}/vehicle")
-    public ApiResponse<Void> deleteScheduleVehicle(@PathVariable("schedule_id") Long scheduleId) {
-        scheduleService.deleteVehicle(scheduleId);
-        return new ApiResponse<>(true, "이동수단이 삭제되었습니다.");
-    }
-
     //여행 일정 price 관리 - 수정(등록)
     @PutMapping("/{schedule_id}/price")
     public ApiResponse<Long> updateSchedulePrice(@PathVariable("schedule_id") Long scheduleId,
-                                                   @RequestBody Long price) {
+                                                 @RequestBody Long price) {
         System.out.println("Received price: " + price);
         scheduleService.updatePrice(scheduleId, price);
         return new ApiResponse<>(true, "예산이 추가되었습니다.", price);
     }
 
-    //여행 일정 price 관리 - 삭제
-    @DeleteMapping("/{schedule_id}/price")
-    public ApiResponse<Void> deleteSchedulePrice(@PathVariable("schedule_id") Long scheduleId) {
-        scheduleService.deletePrice(scheduleId);
-        return new ApiResponse<>(true, "예산이 삭제되었습니다.");
-    }
 }

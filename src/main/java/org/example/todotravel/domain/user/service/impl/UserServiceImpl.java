@@ -169,7 +169,7 @@ public class UserServiceImpl implements UserService {
     // 이름, 생년월일, 이메일로 사용자 찾기
     @Override
     @Transactional(readOnly = true)
-    public PasswordSearchResponseDto findUserByNameAndBirthAndEmail(PasswordSearchRequestDto dto) {
+    public PasswordSearchResponseDto getUserByNameAndBirthAndEmail(PasswordSearchRequestDto dto) {
         User user = userRepository.findByNameAndBirthDateAndEmail(dto.getName(), dto.getBirthDate(), dto.getEmail())
             .orElseThrow(() -> new UserNotFoundException("입력하신 정보와 일치하는 회원이 없어 인증번호를 발송할 수 없습니다."));
 
@@ -181,7 +181,7 @@ public class UserServiceImpl implements UserService {
         return new PasswordSearchResponseDto(user.getUserId());
     }
 
-    // 이름, 이메일로 아이디 찾기
+    // 이름과 이메일로 아이디 혹은 이메일 찾기
     @Override
     @Transactional(readOnly = true)
     public Object getUsernameOrEmail(UsernameRequestDto dto) {
@@ -220,18 +220,6 @@ public class UserServiceImpl implements UserService {
             .orElseThrow(() -> new UserNotFoundException("존재하지 않는 사용자입니다."));
     }
 
-    // 이메일로 userId 찾기
-    @Override
-    @Transactional(readOnly = true)
-    public OAuth2SignUpResponseDto getUserIdByEmail(String email) {
-        User user = userRepository.findUserIdByEmail(email)
-            .orElseThrow(() -> new UserNotFoundException(email + "::유저를 찾을 수 없습니다."));
-
-        return OAuth2SignUpResponseDto.builder()
-            .userId(user.getUserId())
-            .build();
-    }
-
     // 닉네임으로 사용자 찾기
     @Override
     @Transactional(readOnly = true)
@@ -253,7 +241,7 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
     }
 
-    //플랜에 사용자 초대 시 모든 사용자 목록을 return - 김민정
+    // 플랜에 사용자 초대 시 모든 사용자 목록을 return - 김민정
     @Override
     @Transactional(readOnly = true)
     public List<User> getAllUsers() {
@@ -296,7 +284,6 @@ public class UserServiceImpl implements UserService {
     @Override
     public User getProfileImageUrl(Long userId) {
         return userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException("존재하지 않는 사용자입니다."));
-
     }
 
     // 회원 탈퇴 시 사용자 정보 모두 삭제

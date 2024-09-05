@@ -133,7 +133,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         ChatRoom chatRoom = chatRoomRepository.findById(roomId)
             .orElseThrow(() -> new EntityNotFoundException("채팅방을 찾을 수 없습니다."));
         User user = userService.getUserById(userId);
-        ChatRoomUser chatRoomUser = chatRoomUserService.getUserByUserId(user);
+        ChatRoomUser chatRoomUser = chatRoomUserService.getChatRoomUserByUserAndRoom(user, chatRoom);
 
         // 채팅방 사용자 제거 후 저장
         chatRoom.getChatRoomUsers().remove(chatRoomUser);
@@ -143,20 +143,20 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     // 채팅방만 제거
     @Override
     @Transactional
-    public void deleteChatRoom(Long roomId) {
+    public void removeChatRoom(Long roomId) {
         chatRoomRepository.deleteByRoomId(roomId);
     }
 
     // 채팅방과 메시지도 함께 제거
     @Override
     @Transactional
-    public void deleteChatRoomAndMessage(Long roomId) {
+    public void removeChatRoomAndMessage(Long roomId) {
         ChatRoom chatRoom = chatRoomRepository.findById(roomId)
             .orElseThrow(() -> new EntityNotFoundException("채팅방을 찾을 수 없습니다."));
 
         try {
             // 채팅방의 모든 메시지 삭제
-            chatMessageService.deleteAllMessageForChatRoom(roomId)
+            chatMessageService.removeAllMessageForChatRoom(roomId)
                 .doOnSuccess(v -> log.info("채팅방 {} 의 메시지 삭제 완료", roomId))
                 .doOnError(e -> log.error("채팅방 {} 메시지 삭제 중 오류 발생", roomId, e))
                 .block(); // Mono를 동기적으로 실행

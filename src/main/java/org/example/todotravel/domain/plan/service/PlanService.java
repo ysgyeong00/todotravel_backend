@@ -16,7 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface PlanService {
     Plan createPlan(PlanRequestDto planRequestDto, MultipartFile file, User user);
-    void deletePlan(Plan plan);
+    void removePlan(Plan plan);
     void removeAllPlanByUser(User user);
     void removeJustPlan(Plan plan);
     Plan getPlan(Long planId);
@@ -35,6 +35,7 @@ public interface PlanService {
     List<PlanListResponseDto> getAllBookmarkedPlans(User user);
     List<PlanListResponseDto> getRecentLikedPlans(User user);
     List<PlanListResponseDto> getAllLikedPlans(User user);
+    List<PlanListResponseDto> setBookmarkAndLikeCounts(List<PlanListResponseDto> dtos);
     PagedResponseDto<PlanListResponseDto> getPopularPlansNotInRecruitment(int page, int size);
     PagedResponseDto<PlanListResponseDto> getPopularPlansWithFrontLocation(int page, int size, String frontLocation);
     PagedResponseDto<PlanListResponseDto> getPopularPlansWithAllLocation(int page, int size, String frontLocation, String location);
